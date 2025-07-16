@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Color Click Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .game-container {
+            background-color: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            padding: 2rem;
+            width: 90%;
+            max-width: 600px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        
+        .color-box {
+            width: 100px;
+            height: 100px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin: 0.5rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        
+        .color-box:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .score-display {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            color: #4a5568;
+        }
+        
+        .timer-bar {
+            height: 10px;
+            background-color: #e2e8f0;
+            border-radius: 5px;
+            margin: 1rem 0;
+            overflow: hidden;
+        }
+        
+        .timer-progress {
+            height: 100%;
+            background-color: #48bb78;
+            transition: width 0.1s linear;
+        }
+        
+        .message {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin: 1rem 0;
+            min-height: 30px;
+        }
+        
+        .correct {
+            color: #48bb78;
+        }
+        
+        .wrong {
+            color: #e53e3e;
+        }
+        
+        .game-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #4a5568;
+            margin-bottom: 1rem;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        @media (max-width: 640px) {
+            .game-container {
+                padding: 1rem;
+                width: 95%;
+            }
+            
+            .color-box {
+                width: 80px;
+                height: 80px;
+                margin: 0.3rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1 class="game-title">Color Click Challenge</h1>
+        <p class="text-gray-600 mb-4">Klik warna yang sesuai dengan tulisan!</p>
+        
+        <div class="score-display">
+            Skor: <span id="score">0</span>
+        </div>
+        
+        <div class="timer-bar">
+            <div class="timer-progress" id="timer"></div>
+        </div>
+        
+        <div class="message" id="message"></div>
+        
+        <div id="color-display" class="text-3xl font-bold mb-6 text-gray-800"></div>
+        
+        <div id="color-options" class="flex flex-wrap justify-center"></div>
+        
+        <button id="start-btn" class="mt-6 px-6 py-2 bg-indigo-600 text-white rounded-lg shadow-md hover:bg-indigo-700 transition-colors">
+            Mulai Game
+        </button>
+    </div>
+
+    <script>
+        const colors = {
+            red: '#e53e3e',
+            blue: '#3182ce',
+            green: '#38a169',
+            yellow: '#d69e2e',
+            purple: '#805ad5',
+            orange: '#dd6b20',
+            pink: '#d53f8c',
+            brown: '#b7791f'
+        };
+        
+        const colorNames = Object.keys(colors);
+        let score = 0;
+        let timer = 30;
+        let timerInterval;
+        let gameActive = false;
+        let correctColor = '';
+        
+        const scoreDisplay = document.getElementById('score');
+        const colorDisplay = document.getElementById('color-display');
+        const colorOptions = document.getElementById('color-options');
+        const message = document.getElementById('message');
+        const timerBar = document.getElementById('timer');
+        const startBtn = document.getElementById('start-btn');
+        
+        startBtn.addEventListener('click', startGame);
+        
+        function startGame() {
+            if (gameActive) return;
+            
+            gameActive = true;
+            score = 0;
+            timer = 30;
+            scoreDisplay.textContent = score;
+            message.textContent = '';
+            message.className = 'message';
+            startBtn.textContent = 'Game Berjalan...';
+            startBtn.disabled = true;
+            
+            updateTimerDisplay();
+            timerInterval = setInterval(updateTimer, 1000);
+            
+            generateColorChallenge();
+        }
+        
+        function updateTimer() {
+            timer--;
+            updateTimerDisplay();
+            
+            if (timer <= 0) {
+                endGame();
+            }
+        }
+        
+        function updateTimerDisplay() {
+            const percentage = (timer / 30) * 100;
+            timerBar.style.width = `${percentage}%`;
+            
+            if (timer <= 10) {
+                timerBar.style.backgroundColor = '#e53e3e';
+            } else if (timer <= 20) {
+                timerBar.style.backgroundColor = '#d69e2e';
+            } else {
+                timerBar.style.backgroundColor = '#48bb78';
+            }
+        }
+        
+        function generateColorChallenge() {
+            colorOptions.innerHTML = '';
+            
+            // Randomly decide whether to show matching or non-matching text
+            const showCorrect = Math.random() > 0.5;
+            
+            const randomColorName = colorNames[Math.floor(Math.random() * colorNames.length)];
+            const randomColorHex = colors[randomColorName];
+            
+            if (showCorrect) {
+                colorDisplay.textContent = randomColorName;
+                colorDisplay.style.color = randomColorHex;
+                correctColor = randomColorName;
+            } else {
+                // Find a different color name
+                let differentColorName;
+                do {
+                    differentColorName = colorNames[Math.floor(Math.random() * colorNames.length)];
+                } while (differentColorName === randomColorName);
+                
+                colorDisplay.textContent = differentColorName;
+                colorDisplay.style.color = randomColorHex;
+                correctColor = randomColorName;
+            }
+            
+            // Shuffle colors for options
+            const shuffledColors = [...colorNames].sort(() => Math.random() - 0.5);
+            const options = shuffledColors.slice(0, 4);
+            
+            // Make sure correct color is included if not already
+            if (!options.includes(correctColor)) {
+                options[Math.floor(Math.random() * 4)] = correctColor;
+            }
+            
+            // Create color boxes
+            options.forEach(color => {
+                const colorBox = document.createElement('div');
+                colorBox.className = 'color-box';
+                colorBox.style.backgroundColor = colors[color];
+                colorBox.textContent = color;
+                
+                colorBox.addEventListener('click', () => checkAnswer(color));
+                colorOptions.appendChild(colorBox);
+            });
+        }
+        
+        function checkAnswer(selectedColor) {
+            if (!gameActive) return;
+            
+            if (selectedColor === correctColor) {
+                score++;
+                scoreDisplay.textContent = score;
+                message.textContent = 'Benar! +1 Poin';
+                message.className = 'message correct';
+                
+                // Flash correct answer
+                const correctBox = Array.from(document.querySelectorAll('.color-box')).find(box => 
+                    box.textContent === correctColor
+                );
+                correctBox.style.transform = 'scale(1.1)';
+                correctBox.style.boxShadow = '0 0 20px rgba(255,255,255,0.7)';
+                setTimeout(() => {
+                    correctBox.style.transform = 'scale(1)';
+                    correctBox.style.boxShadow = '0 5px 15px rgba(0,0,0,0.2)';
+                }, 300);
+            } else {
+                message.textContent = 'Salah! Coba lagi';
+                message.className = 'message wrong';
+                
+                // Highlight wrong choice
+                const wrongBox = Array.from(document.querySelectorAll('.color-box')).find(box => 
+                    box.textContent === selectedColor
+                );
+                wrongBox.style.animation = 'shake 0.5s';
+                setTimeout(() => {
+                    wrongBox.style.animation = '';
+                }, 500);
+            }
+            
+            setTimeout(() => {
+                message.textContent = '';
+                generateColorChallenge();
+            }, 1000);
+        }
+        
+        function endGame() {
+            clearInterval(timerInterval);
+            gameActive = false;
+            
+            const finalMessage = `Permainan Selesai! Skor akhir: ${score}`;
+            message.textContent = finalMessage;
+            message.className = 'message';
+            
+            startBtn.textContent = 'Main Lagi';
+            startBtn.disabled = false;
+            
+            // Show all color options dimmed
+            const colorBoxes = document.querySelectorAll('.color-box');
+            colorBoxes.forEach(box => {
+                box.style.opacity = '0.5';
+                box.style.cursor = 'default';
+            });
+        }
+        
+        // Add shake animation for wrong answers
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes shake {
+                0% { transform: translateX(0); }
+                25% { transform: translateX(-5px); }
+                50% { transform: translateX(5px); }
+                75% { transform: translateX(-5px); }
+                100% { transform: translateX(0); }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
